@@ -1,0 +1,129 @@
+page 50115 PageSanPham
+{
+    ApplicationArea = All;
+    Caption = 'Sản Phẩm';
+    PageType = List;
+    SourceTable = TableSanPham;
+    UsageCategory = Lists;
+    CardPageId = 50119;
+    layout
+    {
+        area(Content)
+        {
+            repeater(General)
+            {
+                field(idsp; Rec.idsp)
+                {
+                    ToolTip = 'Specifies the value of the idsp field.';
+                    DrillDown = true;
+                    trigger OnDrillDown()
+                    var
+                        PageSanPhamDetails: Page "PageSanPhamDetails";
+                    begin
+                        PageSanPhamDetails.SetRecord(Rec);
+                        PageSanPhamDetails.Run();
+                    end;
+                }
+                field(tensp; Rec.tensp)
+                {
+                    ToolTip = 'Specifies the value of the tensp field.';
+                }
+                field(dongia; Rec.dongia)
+                {
+                    ToolTip = 'Specifies the value of the dongia field.';
+                }
+                field(hinhanh; Rec.hinhanh)
+                {
+                    ToolTip = 'Specifies the image for the product.';
+                    ApplicationArea = All;
+                    Caption = 'Hình ảnh';
+                }
+                field(hinhanhcc; Rec.hinhanhchuoi)
+                {
+                    ApplicationArea = all;
+                    ToolTip = 'Specifies the value of the hinh anh field.';
+
+                }
+            }
+        }
+    }
+    actions
+    {
+        area(processing)
+        {
+            action("View Details")
+            {
+                ApplicationArea = All;
+                Caption = 'Thêm bằng file.txt';
+                Image = AddContacts;
+                Promoted = true;
+                PromotedCategory = Process;
+
+                trigger OnAction()
+                var
+                    InStream: InStream;
+                    TextLine: Text;
+                    Product: Record TableSanPham;
+                    Content: text;
+                    Line: Text;
+                    Lines: List of [Text];
+                    Fields: List of [Text];
+                    Base64Data: Text[999999999];
+                    ImageStr: InStream;
+                    TempBlob: Codeunit "Temp Blob";
+                    Buffer: Text;
+                    BufferLength: Integer;
+                    FileContent: Text;
+                    Base64convert: Codeunit "Base64 Convert";
+                    RecordRef: RecordRef;
+                    FieldRef: FieldRef;
+                    OutStream: OutStream;
+                    BlobInStream: InStream;
+                    TempInteger: Integer;
+                    TempDecimal: Decimal;
+                begin
+                    if UploadIntoStream('Chọn tệp văn bản từ folder của bạn', '', 'Text files (*.txt)|*.txt', TextLine, InStream) then begin
+                        BufferLength := 1024;
+                        Buffer := '';
+                        repeat
+                            InStream.ReadText(Buffer, BufferLength);
+                            FileContent := FileContent + Buffer;
+                        until InStream.EOS;
+                        // tách nội dung thành các dòng
+                        Lines := FileContent.Split('\n');
+                        // duyệt qua
+                        foreach Line in lines do begin
+                            if Line.Trim() <> '' then begin
+                                Fields := Line.Split('|');
+                                if Fields.Count() < 5 then
+                                    error('Quá 5 | trong tệp dữ liệu.');
+                                // gán dữ liệu cho từng field
+                                Product.Init();
+                                if Evaluate(TempInteger, Fields.Get(1)) then
+                                    Product.idsp := TempInteger
+                                else
+                                    Error('Giá trị không hợp lệ cho idsp: %1', Fields.Get(1));
+                                Product.tensp := Fields.Get(2);
+
+                                if Evaluate(TempDecimal, Fields.Get(3)) then
+                                    Product.dongia := TempDecimal
+                                else
+                                    Error('Giá trị không hợp lệ cho dongia: %1', Fields.Get(3));
+                                Product.mota := Fields.Get(4);
+                                Product.xuatxu := Fields.Get(5);
+
+
+                                //lưu vào bảng
+                                if Product.Insert() then
+                                    Message('Đã thêm sản phẩm: %1', Product.tensp)
+                                else
+                                    Error('Không thể thêm sản phẩm: %1. Có thể sản phẩm đã tồn tại.', Product.tensp);
+
+                            end;
+                        end;
+                    end;
+                end;
+            }
+        }
+    }
+}
