@@ -1,0 +1,150 @@
+page 50130 ApiKhachHangg
+{
+    APIGroup = 'apiGroup';
+    APIPublisher = 'ProjectThucTap';
+    APIVersion = 'v1.0';
+    ApplicationArea = All;
+    Caption = 'apiKhachHang';
+    DelayedInsert = true;
+    EntityName = 'KhachHang';
+    EntitySetName = 'KhachHangs';
+    PageType = API;
+    SourceTable = TableKhachHang;
+    InherentPermissions=X;
+    Permissions=tabledata TableKhachHang=RIMD;
+    layout
+    {
+        area(Content)
+        {
+            repeater(General)
+            {
+                field(idkh; Rec.idkh)
+                {
+                    Caption = 'Mã khách hàng';
+                }
+                field(tenkh; Rec.tenkh)
+                {
+                    Caption = 'Tên khách hàng';
+                }
+                field(diachi; Rec.diachi)
+                {
+                    Caption = 'Địa chỉ';
+                }
+                field(sdt; Rec.sdt)
+                {
+                    Caption = 'Số điện thoại';
+                }
+                field(hinhanhblob;Rec.hinhanhblob)
+                {
+                    Caption = 'hình ảnh';
+                }
+
+                field(In64bitValue; In64bitValue)
+                {
+                    Caption = 'Hình ảnh';
+                    trigger OnValidate()
+                    var
+                        myInt: Integer;
+                    begin
+                        IF In64bitValue <> '' THEN
+                            Rec.ImportAttachment(In64bitValue)
+                        Else
+                            Error('No Bith 64 value.');
+                    end;
+                }
+
+            }
+        }
+    }
+    var
+        In64bitValue: Text;
+    
+}
+
+table 50118 TableKhachHang
+{
+    Caption = 'Khách hàng';
+    DataClassification = ToBeClassified;
+    Access = Public;
+    InherentPermissions = RIMDX;
+    fields
+    {
+        field(1; idkh; Code[20])
+        {
+            Editable=false;
+            Caption = 'Mã khách hàng';
+            trigger OnValidate()
+            begin
+                if idkh <> xRec.idkh then begin
+                    SalesSetup.Get();
+                    NoSeries.TestManual(SalesSetup.MaKhachHang);
+                    "No. Series" := '';
+                end;
+            end;
+            trigger OnLookup()
+            begin
+                PageKhachHangNO.Run();
+            end;
+        }
+        field(2; tenkh; Text[50])
+        {
+            Caption = 'Tên khách hàng';
+        }
+        field(3; sdt; Text[10])
+        {
+            Caption = 'Số điện thoại';
+            NotBlank = true;
+            
+        }
+        field(4; diachi; Text[200])
+        {
+            Caption = 'Địa chỉ';
+            NotBlank = true;
+        }
+        field(6; hinhanhblob; Blob)
+        {
+            Caption = 'Hình ảnh';
+            Subtype = Bitmap;
+            Compressed = true;
+        }
+        field(10; "No. Series"; Code[20])
+        {
+            Caption = 'No. Series';
+            Editable = false;
+            TableRelation = "No. Series";
+        }
+
+
+    }
+    keys
+    {
+        key(PK; idkh)
+        {
+            Clustered = true;
+        }
+    }
+    fieldgroups
+    {
+        fieldgroup(DropDown; idkh, tenkh, sdt, diachi)
+        {
+        }
+    }
+    procedure ImportAttachment(Bit64InputValue: Text)
+    var
+        Base64Convert: Codeunit "Base64 Convert";
+        TempBlob: Codeunit "Temp Blob";
+        TempOutstream: OutStream;
+        Recref: RecordRef;
+    begin
+        If Bit64InputValue = '' Then
+            exit;
+        Recref.Open(Database::TableKhachHang);
+        Recref.GetTable(Rec);
+        TempBlob.CreateOutStream(TempOutstream);
+        Base64Convert.FromBase64(Bit64InputValue, TempOutstream);
+
+        TempBlob.ToRecordRef(Recref, Rec.FieldNo(hinhanhblob));
+        Recref.SetTable(Rec);
+        Recref.Close();
+    end;
+}
